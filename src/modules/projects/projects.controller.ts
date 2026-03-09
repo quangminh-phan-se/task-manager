@@ -34,7 +34,6 @@ import { ProjectsService } from './projects.service';
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
-  // ─── POST /projects ────────────────────────────────────────────────────────
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -87,7 +86,6 @@ export class ProjectsController {
     return this.projectsService.create(dto);
   }
 
-  // ─── GET /projects ─────────────────────────────────────────────────────────
   @Get()
   @ApiOperation({
     summary: 'Get all projects',
@@ -131,7 +129,6 @@ export class ProjectsController {
     return this.projectsService.findAll(query);
   }
 
-  // ─── GET /projects/:id ─────────────────────────────────────────────────────
   @Get(':id')
   @ApiOperation({
     summary: 'Get a project by ID',
@@ -187,7 +184,6 @@ export class ProjectsController {
     return this.projectsService.findOne(id);
   }
 
-  // ─── GET /projects/:id/stats ───────────────────────────────────────────────
   @Get(':id/stats')
   @ApiOperation({
     summary: 'Get task stats for a project',
@@ -223,7 +219,6 @@ export class ProjectsController {
     return this.projectsService.getStats(id);
   }
 
-  // ─── PATCH /projects/:id ───────────────────────────────────────────────────
   @Patch(':id')
   @ApiOperation({
     summary: 'Update a project',
@@ -246,7 +241,6 @@ export class ProjectsController {
     return this.projectsService.update(id, dto);
   }
 
-  // ─── DELETE /projects/:id ──────────────────────────────────────────────────
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

@@ -14,10 +14,8 @@ async function bootstrap() {
   const prefix = configService.get<string>('app.prefix') || 'api/v1';
   const env = configService.get<string>('app.env');
 
-  // Global prefix
   app.setGlobalPrefix(prefix);
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -27,16 +25,10 @@ async function bootstrap() {
     }),
   );
 
-  // Global exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
-
-  // Global response interceptor
   app.useGlobalInterceptors(new ResponseInterceptor());
-
-  // CORS
   app.enableCors();
 
-  // ─── Swagger ────────────────────────────────────────────────────────────────
   if (env !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('Task Manager API')
@@ -44,45 +36,37 @@ async function bootstrap() {
         `
       ## 📋 Task Manager REST API
 
-      Manage your **projects** and **tasks** with ease.
+      ### Authentication Flow
+      1. \`POST /auth/register\` or \`POST /auth/login\` → get \`accessToken\` + \`refreshToken\`
+      2. Attach \`accessToken\` to header: \`Authorization: Bearer <accessToken>\`
+      3. when access token expire → \`POST /auth/refresh\` and \`refreshToken\`
+      4. \`POST /auth/logout\` to invalidate refresh token
 
-      ### Features
-      - Full CRUD for Projects and Tasks
-      - Task status transition validation
-      - Filter & search support
-      - Standardized response format
-
-      ### Response Format
-      All endpoints return a unified response wrapper:
-      \`\`\`json
-      {
-        "success": true,
-        "data": { ... },
-        "timestamp": "2024-01-01T00:00:00.000Z"
-      }
-      \`\`\`
-
-      ### Error Format
-      \`\`\`json
-      {
-        "statusCode": 400,
-        "timestamp": "2024-01-01T00:00:00.000Z",
-        "path": "/api/v1/tasks",
-        "method": "POST",
-        "message": "Validation failed"
-      }
-      \`\`\`
+      ### Token TTL
+      | Token | TTL |
+      |-------|-----|
+      | Access Token | 15m |
+      | Refresh Token | 7d |
       `.trim(),
       )
       .setVersion('1.0.0')
-      .addTag('projects', 'Manage projects — create, read, update, delete')
+      .addTag('auth', 'Register, login, logout, refresh token')
+      .addTag('projects', 'Manage projects')
       .addTag('tasks', 'Manage tasks within projects')
-      // .addBearerAuth() // uncomment later when add Auth
+
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
+        'access-token',
+      )
+
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT', in: 'header' },
+        'refresh-token',
+      )
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
 
-    // Swagger UI
     SwaggerModule.setup('docs', app, document, {
       swaggerOptions: {
         persistAuthorization: true,
@@ -98,7 +82,6 @@ async function bootstrap() {
     console.log(`📖 Swagger UI:        http://localhost:${port}/docs`);
     console.log(`📄 Swagger JSON:      http://localhost:${port}/docs-json`);
   }
-  // ────────────────────────────────────────────────────────────────────────────
 
   await app.listen(port);
   console.log(`\n🚀 Server running on: http://localhost:${port}/${prefix}`);

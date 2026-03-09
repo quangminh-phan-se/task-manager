@@ -10,7 +10,6 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskStatus } from './entities/task.entity';
 import { TasksRepository } from './tasks.repository';
 
-// Valid status transitions — tránh skip bước
 const STATUS_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   [TaskStatus.TODO]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
   [TaskStatus.IN_PROGRESS]: [
@@ -35,7 +34,6 @@ export class TasksService {
   ) {}
 
   async create(dto: CreateTaskDto) {
-    // Guard: project must exist
     const project = await this.projectsRepository.findOne({
       where: { id: dto.projectId },
     });
@@ -71,7 +69,6 @@ export class TasksService {
   async update(id: string, dto: UpdateTaskDto) {
     const task = await this.findOne(id);
 
-    // Validate status transition
     if (dto.status && dto.status !== task.status) {
       const allowedTransitions = STATUS_TRANSITIONS[task.status];
       if (!allowedTransitions.includes(dto.status)) {
@@ -93,7 +90,6 @@ export class TasksService {
   }
 
   async findByProject(projectId: string) {
-    // Guard: project must exist
     const project = await this.projectsRepository.findOne({
       where: { id: projectId },
     });

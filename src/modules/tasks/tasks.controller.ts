@@ -33,7 +33,6 @@ import { TasksService } from './tasks.service';
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
-  // ─── POST /tasks ───────────────────────────────────────────────────────────
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -67,7 +66,6 @@ export class TasksController {
     return this.tasksService.create(dto);
   }
 
-  // ─── GET /tasks ────────────────────────────────────────────────────────────
   @Get()
   @ApiOperation({
     summary: 'Get all tasks',
@@ -129,7 +127,6 @@ export class TasksController {
     return this.tasksService.findAll(query);
   }
 
-  // ─── GET /tasks/:id ────────────────────────────────────────────────────────
   @Get(':id')
   @ApiOperation({
     summary: 'Get a task by ID',
@@ -147,7 +144,6 @@ export class TasksController {
     return this.tasksService.findOne(id);
   }
 
-  // ─── PATCH /tasks/:id ──────────────────────────────────────────────────────
   @Patch(':id')
   @ApiOperation({
     summary: 'Update a task',
@@ -192,7 +188,6 @@ Partially updates a task. All fields are optional.
     return this.tasksService.update(id, dto);
   }
 
-  // ─── PATCH /tasks/:id/status ───────────────────────────────────────────────
   @Patch(':id/status')
   @ApiOperation({
     summary: 'Quick-update task status',
@@ -228,7 +223,6 @@ Partially updates a task. All fields are optional.
     return this.tasksService.updateStatus(id, status);
   }
 
-  // ─── DELETE /tasks/:id ─────────────────────────────────────────────────────
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

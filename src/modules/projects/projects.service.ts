@@ -14,7 +14,6 @@ export class ProjectsService {
   constructor(private readonly projectsRepository: ProjectsRepository) {}
 
   async create(dto: CreateProjectDto) {
-    // Check duplicate name
     const nameExists = await this.projectsRepository.existsByName(dto.name);
     if (nameExists) {
       throw new ConflictException(
@@ -27,17 +26,14 @@ export class ProjectsService {
   }
 
   async findAll(query: QueryProjectDto) {
-    // If search query, use search
     if (query.search) {
       return this.projectsRepository.searchByName(query.search);
     }
 
-    // If status filter
     if (query.status) {
       return this.projectsRepository.findByStatus(query.status);
     }
 
-    // Default: all with task count
     return this.projectsRepository.findAllWithTaskCount();
   }
 
@@ -52,10 +48,8 @@ export class ProjectsService {
   }
 
   async update(id: string, dto: UpdateProjectDto) {
-    // Guard: project must exist
     await this.findOne(id);
 
-    // Check duplicate name (exclude current project)
     if (dto.name) {
       const nameExists = await this.projectsRepository.existsByName(
         dto.name,
@@ -79,7 +73,6 @@ export class ProjectsService {
   }
 
   async getStats(id: string) {
-    // Guard: project must exist
     await this.findOne(id);
 
     const statusCounts = await this.projectsRepository.manager
