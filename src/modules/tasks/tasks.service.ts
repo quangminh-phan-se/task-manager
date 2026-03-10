@@ -48,21 +48,14 @@ export class TasksService {
   }
 
   async findAll(query: QueryTaskDto) {
-    return this.tasksRepository.findWithFilters({
-      projectId: query.projectId,
-      status: query.status,
-      priority: query.priority,
-      search: query.search,
-    });
+    return this.tasksRepository.findWithPagination(query);
   }
 
   async findOne(id: string) {
     const task = await this.tasksRepository.findOneWithProject(id);
-
     if (!task) {
       throw new NotFoundException(`Task with id "${id}" not found`);
     }
-
     return task;
   }
 
@@ -73,8 +66,8 @@ export class TasksService {
       const allowedTransitions = STATUS_TRANSITIONS[task.status];
       if (!allowedTransitions.includes(dto.status)) {
         throw new BadRequestException(
-          `Cannot transition task from "${task.status}" to "${dto.status}". ` +
-            `Allowed transitions: ${allowedTransitions.length ? allowedTransitions.join(', ') : 'none'}`,
+          `Cannot transition from "${task.status}" to "${dto.status}". ` +
+            `Allowed: ${allowedTransitions.length ? allowedTransitions.join(', ') : 'none'}`,
         );
       }
     }
@@ -87,17 +80,6 @@ export class TasksService {
     const task = await this.findOne(id);
     await this.tasksRepository.remove(task);
     return { message: `Task "${task.title}" deleted successfully` };
-  }
-
-  async findByProject(projectId: string) {
-    const project = await this.projectsRepository.findOne({
-      where: { id: projectId },
-    });
-    if (!project) {
-      throw new NotFoundException(`Project with id "${projectId}" not found`);
-    }
-
-    return this.tasksRepository.findByProjectId(projectId);
   }
 
   async updateStatus(id: string, status: TaskStatus) {

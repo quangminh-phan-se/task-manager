@@ -12,114 +12,81 @@ import {
   Query,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
-  ApiQuery,
   ApiTags,
+  ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
 } from '@nestjs/swagger';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { QueryTaskDto } from './dto/query-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
-import { TaskPriority, TaskStatus } from './entities/task.entity';
+import { TaskStatus } from './entities/task.entity';
 import { TasksService } from './tasks.service';
 
 @ApiTags('tasks')
+@ApiBearerAuth('access-token')
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: 'Create a new task',
-    description:
-      'Creates a new task linked to an existing project. The project must exist.',
-  })
-  @ApiCreatedResponse({
-    description: 'Task created successfully',
-    schema: {
-      example: {
-        success: true,
-        data: {
-          id: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-          title: 'Design new landing page mockup',
-          description: 'Create Figma mockups based on brand guidelines',
-          status: 'todo',
-          priority: 'high',
-          dueDate: '2024-02-28',
-          projectId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-          createdAt: '2024-01-15T09:00:00.000Z',
-          updatedAt: '2024-01-15T09:00:00.000Z',
-        },
-        timestamp: '2024-01-15T09:00:00.000Z',
-      },
-    },
-  })
-  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiOperation({ summary: 'Create a new task' })
+  @ApiCreatedResponse({ description: 'Task created' })
   @ApiNotFoundResponse({ description: 'Project not found' })
+  @ApiUnauthorizedResponse({ description: 'Not authenticated' })
   create(@Body() dto: CreateTaskDto) {
     return this.tasksService.create(dto);
   }
 
   @Get()
   @ApiOperation({
-    summary: 'Get all tasks',
-    description:
-      'Returns all tasks. Supports filtering by status, priority, projectId, and title search.',
-  })
-  @ApiQuery({
-    name: 'status',
-    required: false,
-    enum: TaskStatus,
-    description: 'Filter by task status',
-  })
-  @ApiQuery({
-    name: 'priority',
-    required: false,
-    enum: TaskPriority,
-    description: 'Filter by task priority',
-  })
-  @ApiQuery({
-    name: 'projectId',
-    required: false,
-    type: String,
-    description: 'Filter by project UUID',
-    example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-  })
-  @ApiQuery({
-    name: 'search',
-    required: false,
-    type: String,
-    description: 'Search tasks by title (case-insensitive partial match)',
-    example: 'mockup',
+    summary: 'Get all tasks (paginated)',
+    description: `
+Supports **pagination**, **filtering** by multiple fields, **date range**, and **sorting**.
+
+**Example queries:**
+- \`?page=1&limit=10\` — first 10 tasks
+- \`?status=todo&priority=high\` — filter by status and priority
+- \`?projectId=uuid&sortBy=dueDate&sortOrder=ASC\` — tasks of a project sorted by due date
+- \`?dueDateFrom=2024-01-01&dueDateTo=2024-03-31\` — tasks due in Q1 2024
+- \`?search=mockup&status=in_progress\` — search + filter combined
+    `.trim(),
   })
   @ApiOkResponse({
-    description: 'List of tasks',
+    description: 'Paginated list of tasks',
     schema: {
       example: {
         success: true,
-        data: [
-          {
-            id: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-            title: 'Design new landing page mockup',
-            status: 'in_progress',
-            priority: 'high',
-            dueDate: '2024-02-28',
-            projectId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-            project: {
-              id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-              name: 'Website Redesign',
+        data: {
+          data: [
+            {
+              id: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
+              title: 'Design landing page mockup',
+              status: 'in_progress',
+              priority: 'high',
+              dueDate: '2024-02-28',
+              projectId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+              project: { id: 'a1b2c3d4-...', name: 'Website Redesign' },
+              createdAt: '2024-01-15T09:00:00.000Z',
             },
-            createdAt: '2024-01-15T09:00:00.000Z',
-            updatedAt: '2024-01-16T14:00:00.000Z',
+          ],
+          meta: {
+            page: 1,
+            limit: 10,
+            totalItems: 38,
+            totalPages: 4,
+            hasPreviousPage: false,
+            hasNextPage: true,
           },
-        ],
-        timestamp: '2024-01-16T14:00:00.000Z',
+        },
+        timestamp: '2024-01-15T09:00:00.000Z',
       },
     },
   })
@@ -128,16 +95,8 @@ export class TasksController {
   }
 
   @Get(':id')
-  @ApiOperation({
-    summary: 'Get a task by ID',
-    description: 'Returns a single task with its associated project info.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Task UUID',
-    example: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-    format: 'uuid',
-  })
+  @ApiOperation({ summary: 'Get a task by ID' })
+  @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ description: 'Task found' })
   @ApiNotFoundResponse({ description: 'Task not found' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
@@ -145,77 +104,30 @@ export class TasksController {
   }
 
   @Patch(':id')
-  @ApiOperation({
-    summary: 'Update a task',
-    description: `
-Partially updates a task. All fields are optional.
-
-**Note:** \`projectId\` cannot be changed after creation.
-
-**Status Transition Rules:**
-| From | Allowed transitions |
-|------|-------------------|
-| \`todo\` | \`in_progress\`, \`cancelled\` |
-| \`in_progress\` | \`in_review\`, \`todo\`, \`cancelled\` |
-| \`in_review\` | \`done\`, \`in_progress\`, \`cancelled\` |
-| \`done\` | *(terminal — no transitions)* |
-| \`cancelled\` | *(terminal — no transitions)* |
-    `.trim(),
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Task UUID',
-    example: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-    format: 'uuid',
-  })
+  @ApiOperation({ summary: 'Update a task (status transition rules apply)' })
+  @ApiParam({ name: 'id', format: 'uuid' })
   @ApiBody({ type: UpdateTaskDto })
-  @ApiOkResponse({ description: 'Task updated successfully' })
-  @ApiBadRequestResponse({
-    description: 'Invalid status transition',
-    schema: {
-      example: {
-        statusCode: 400,
-        timestamp: '2024-01-15T09:00:00.000Z',
-        path: '/api/v1/tasks/f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-        method: 'PATCH',
-        message:
-          'Cannot transition task from "todo" to "done". Allowed transitions: in_progress, cancelled',
-      },
-    },
-  })
+  @ApiOkResponse({ description: 'Task updated' })
+  @ApiBadRequestResponse({ description: 'Invalid status transition' })
   @ApiNotFoundResponse({ description: 'Task not found' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTaskDto) {
     return this.tasksService.update(id, dto);
   }
 
   @Patch(':id/status')
-  @ApiOperation({
-    summary: 'Quick-update task status',
-    description:
-      'Shortcut endpoint to update only the status field. Same transition rules apply.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Task UUID',
-    example: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-    format: 'uuid',
-  })
+  @ApiOperation({ summary: 'Quick-update task status' })
+  @ApiParam({ name: 'id', format: 'uuid' })
   @ApiBody({
     schema: {
       type: 'object',
       required: ['status'],
       properties: {
-        status: {
-          type: 'string',
-          enum: Object.values(TaskStatus),
-          example: TaskStatus.IN_PROGRESS,
-        },
+        status: { type: 'string', enum: Object.values(TaskStatus) },
       },
     },
   })
-  @ApiOkResponse({ description: 'Task status updated' })
+  @ApiOkResponse({ description: 'Status updated' })
   @ApiBadRequestResponse({ description: 'Invalid status transition' })
-  @ApiNotFoundResponse({ description: 'Task not found' })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: TaskStatus,
@@ -225,28 +137,9 @@ Partially updates a task. All fields are optional.
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Delete a task',
-    description: 'Permanently deletes a task.',
-  })
-  @ApiParam({
-    name: 'id',
-    description: 'Task UUID',
-    example: 'f1e2d3c4-b5a6-7890-fedc-ba9876543210',
-    format: 'uuid',
-  })
-  @ApiOkResponse({
-    description: 'Task deleted successfully',
-    schema: {
-      example: {
-        success: true,
-        data: {
-          message: 'Task "Design new landing page mockup" deleted successfully',
-        },
-        timestamp: '2024-01-15T09:00:00.000Z',
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Delete a task' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ description: 'Task deleted' })
   @ApiNotFoundResponse({ description: 'Task not found' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.tasksService.remove(id);

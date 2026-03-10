@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { Project, ProjectStatus } from './entities/project.entity';
+import { PaginatedResponse } from '../../common/dto/paginated-response.dto';
+import { SortOrder } from '../../common/dto/pagination.dto';
+import { QueryProjectDto, ProjectSortBy } from './dto/query-project.dto';
+import { Project } from './entities/project.entity';
 
 @Injectable()
 export class ProjectsRepository extends Repository<Project> {
@@ -8,11 +11,46 @@ export class ProjectsRepository extends Repository<Project> {
     super(Project, dataSource.createEntityManager());
   }
 
-  async findAllWithTaskCount(): Promise<Project[]> {
-    return this.createQueryBuilder('project')
-      .loadRelationCountAndMap('project.taskCount', 'project.tasks')
-      .orderBy('project.createdAt', 'DESC')
-      .getMany();
+  async findWithPagination(
+    query: QueryProjectDto,
+  ): Promise<PaginatedResponse<Project>> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      sortBy = ProjectSortBy.CREATED_AT,
+      sortOrder = SortOrder.DESC,
+    } = query;
+
+    const qb = this.createQueryBuilder('project')
+
+      .loadRelationCountAndMap('project.taskCount', 'project.tasks');
+
+    if (search) {
+      qb.andWhere('LOWER(project.name) LIKE LOWER(:search)', {
+        search: `%${search}%`,
+      });
+    }
+
+    if (status) {
+      qb.andWhere('project.status = :status', { status });
+    }
+
+    const sortColumnMap: Record<ProjectSortBy, string> = {
+      [ProjectSortBy.NAME]: 'project.name',
+      [ProjectSortBy.STATUS]: 'project.status',
+      [ProjectSortBy.CREATED_AT]: 'project.createdAt',
+      [ProjectSortBy.UPDATED_AT]: 'project.updatedAt',
+    };
+    qb.orderBy(sortColumnMap[sortBy], sortOrder);
+
+    const skip = (page - 1) * limit;
+    qb.skip(skip).take(limit);
+
+    const [data, totalItems] = await qb.getManyAndCount();
+
+    return new PaginatedResponse(data, totalItems, page, limit);
   }
 
   async findOneWithTasks(id: string): Promise<Project | null> {
@@ -23,33 +61,16 @@ export class ProjectsRepository extends Repository<Project> {
       .getOne();
   }
 
-  async findByStatus(status: ProjectStatus): Promise<Project[]> {
-    return this.find({
-      where: { status },
-      order: { createdAt: 'DESC' },
-    });
-  }
-
-  async searchByName(search: string): Promise<Project[]> {
-    return this.createQueryBuilder('project')
-      .where('LOWER(project.name) LIKE LOWER(:search)', {
-        search: `%${search}%`,
-      })
-      .orderBy('project.createdAt', 'DESC')
-      .getMany();
-  }
-
   async existsByName(name: string, excludeId?: string): Promise<boolean> {
-    const query = this.createQueryBuilder('project').where(
+    const qb = this.createQueryBuilder('project').where(
       'LOWER(project.name) = LOWER(:name)',
       { name },
     );
 
     if (excludeId) {
-      query.andWhere('project.id != :excludeId', { excludeId });
+      qb.andWhere('project.id != :excludeId', { excludeId });
     }
 
-    const count = await query.getCount();
-    return count > 0;
+    return (await qb.getCount()) > 0;
   }
 }

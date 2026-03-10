@@ -26,24 +26,14 @@ export class ProjectsService {
   }
 
   async findAll(query: QueryProjectDto) {
-    if (query.search) {
-      return this.projectsRepository.searchByName(query.search);
-    }
-
-    if (query.status) {
-      return this.projectsRepository.findByStatus(query.status);
-    }
-
-    return this.projectsRepository.findAllWithTaskCount();
+    return this.projectsRepository.findWithPagination(query);
   }
 
   async findOne(id: string) {
     const project = await this.projectsRepository.findOneWithTasks(id);
-
     if (!project) {
       throw new NotFoundException(`Project with id "${id}" not found`);
     }
-
     return project;
   }
 
@@ -89,10 +79,6 @@ export class ProjectsService {
       0,
     );
 
-    return {
-      projectId: id,
-      total,
-      breakdown: statusCounts,
-    };
+    return { projectId: id, total, breakdown: statusCounts };
   }
 }

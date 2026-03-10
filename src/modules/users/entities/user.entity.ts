@@ -31,7 +31,7 @@ export class User {
   email: string;
 
   @Exclude()
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @ApiProperty({ enum: UserRole, example: UserRole.MEMBER })
